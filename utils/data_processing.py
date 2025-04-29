@@ -95,10 +95,17 @@ def load_data(
         # Sort by create_time
         df = df.sort("create_time", descending=False)
 
-        # Remove duplicates by keeping first record per day
+        # Calculate mean values for each day
         df = (
             df.with_columns(pl.col("create_time").dt.date().alias("date"))
-            .unique(subset=["date"], keep="first")
+            .group_by("date")
+            .agg([
+                pl.col("create_time").first(),  # Keep first timestamp of the day
+                pl.col("weight").mean().round(2),
+                pl.col("skeletal_muscle_mass").mean().round(2),
+                pl.col("body_fat_mass").mean().round(2),
+                pl.col("basal_metabolic_rate").mean().round(0).cast(int)
+            ])
             .drop("date")
         )
 
@@ -114,3 +121,75 @@ def load_data(
         raise FileNotFoundError(f"Data file not found: {file_path}")
     except Exception as e:
         raise Exception(f"Error processing data: {str(e)}")
+
+
+def calculate_monthly_stats(df: pl.DataFrame) -> pl.DataFrame:
+    """
+    Calculate monthly statistics for body composition metrics.
+
+    For each metric (weight, skeletal_muscle_mass, body_fat_mass, basal_metabolic_rate),
+    this function calculates:
+    - Mean value
+    - Standard deviation
+    - IQR (Interquartile Range)
+    - Month-to-month variation (difference from previous month)
+
+    Args:
+        df (pl.DataFrame): DataFrame with body composition data, must contain:
+            - create_time: datetime column
+            - weight: float column
+            - skeletal_muscle_mass: float column
+            - body_fat_mass: float column
+            - basal_metabolic_rate: int column
+
+    Returns:
+        pl.DataFrame: Monthly statistics with columns:
+            - month: YYYY-MM format
+            - weight_mean, weight_std_dev, weight_iqr, weight_variation
+            - skeletal_muscle_mass_mean, skeletal_muscle_mass_std_dev, skeletal_muscle_mass_iqr, skeletal_muscle_mass_variation
+            - body_fat_mass_mean, body_fat_mass_std_dev, body_fat_mass_iqr, body_fat_mass_variation
+            - basal_metabolic_rate_mean, basal_metabolic_rate_std_dev, basal_metabolic_rate_iqr, basal_metabolic_rate_month_to_month_change
+    """
+    # Extract month from create_time
+    df = df.with_columns(
+        pl.col("create_time").dt.strftime("%Y-%m").alias("month")
+    )
+
+    # Define metrics to analyze
+    metrics = ["weight", "skeletal_muscle_mass", "body_fat_mass", "basal_metabolic_rate"]
+
+    # Calculate all statistics in one go
+    monthly_stats = (
+        df.group_by("month")
+        .agg([
+            # Record count
+            pl.count().alias("record_count"),
+
+            # Weight statistics
+            pl.col("weight").mean().round(2).alias("weight_mean"),
+            pl.col("weight").std().round(2).alias("weight_std_dev"),
+
+            # Skeletal muscle mass statistics
+            pl.col("skeletal_muscle_mass").mean().round(2).alias("skeletal_muscle_mass_mean"),
+            pl.col("skeletal_muscle_mass").std().round(2).alias("skeletal_muscle_mass_std_dev"),
+
+            # Body fat mass statistics
+            pl.col("body_fat_mass").mean().round(2).alias("body_fat_mass_mean"),
+            pl.col("body_fat_mass").std().round(2).alias("body_fat_mass_std_dev"),
+
+            # Basal metabolic rate statistics
+            pl.col("basal_metabolic_rate").mean().round(0).cast(int).alias("basal_metabolic_rate_mean"),
+            pl.col("basal_metabolic_rate").std().round(0).cast(int).alias("basal_metabolic_rate_std_dev"),
+        ])
+        .sort("month")
+    )
+
+    # Calculate month-to-month changes for each metric
+    for metric in metrics:
+        mean_col = f"{metric}_mean"
+        change_col = f"{metric}_variation"
+        monthly_stats = monthly_stats.with_columns(
+            (pl.col(mean_col) - pl.col(mean_col).shift(1)).round(2).alias(change_col)
+        )
+
+    return monthly_stats
