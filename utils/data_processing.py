@@ -29,7 +29,7 @@ def load_data(
         pl.DataFrame: Processed data with columns:
             - create_time: datetime of measurement
             - weight: body weight in kg (rounded to 2 decimal places)
-            - skeletal_muscle_mass: in kg (rounded to 2 decimal places)
+            - muscle_mass: in kg (rounded to 2 decimal places)
             - body_fat_mass: in kg (rounded to 2 decimal places)
             - basal_metabolic_rate: in kcal (integer)
             - elapse_days: days since first measurement
@@ -86,6 +86,9 @@ def load_data(
             ])
         )
 
+        # rename skeletal_muscle_mass to muscle_mass
+        df = df.rename({"skeletal_muscle_mass": "muscle_mass"})
+
         # Apply date range filters
         if date_from:
             df = df.filter(pl.col("create_time") >= date_from)
@@ -102,12 +105,15 @@ def load_data(
             .agg([
                 pl.col("create_time").first(),  # Keep first timestamp of the day
                 pl.col("weight").mean().round(2),
-                pl.col("skeletal_muscle_mass").mean().round(2),
+                pl.col("muscle_mass").mean().round(2),
                 pl.col("body_fat_mass").mean().round(2),
                 pl.col("basal_metabolic_rate").mean().round(0).cast(int)
             ])
             .drop("date")
         )
+
+        # drop rows with null values
+        df = df.drop_nulls()
 
         # Calculate days elapsed since first record
         first_date = df.select("create_time").min()
@@ -127,7 +133,7 @@ def calculate_monthly_stats(df: pl.DataFrame) -> pl.DataFrame:
     """
     Calculate monthly statistics for body composition metrics.
 
-    For each metric (weight, skeletal_muscle_mass, body_fat_mass, basal_metabolic_rate),
+    For each metric (weight, muscle_mass, body_fat_mass, basal_metabolic_rate),
     this function calculates:
     - Mean value
     - Standard deviation
@@ -138,7 +144,7 @@ def calculate_monthly_stats(df: pl.DataFrame) -> pl.DataFrame:
         df (pl.DataFrame): DataFrame with body composition data, must contain:
             - create_time: datetime column
             - weight: float column
-            - skeletal_muscle_mass: float column
+            - muscle_mass: float column
             - body_fat_mass: float column
             - basal_metabolic_rate: int column
 
@@ -146,7 +152,7 @@ def calculate_monthly_stats(df: pl.DataFrame) -> pl.DataFrame:
         pl.DataFrame: Monthly statistics with columns:
             - month: YYYY-MM format
             - weight_mean, weight_std_dev, weight_iqr, weight_variation
-            - skeletal_muscle_mass_mean, skeletal_muscle_mass_std_dev, skeletal_muscle_mass_iqr, skeletal_muscle_mass_variation
+            - muscle_mass_mean, muscle_mass_std_dev, muscle_mass_iqr, muscle_mass_variation
             - body_fat_mass_mean, body_fat_mass_std_dev, body_fat_mass_iqr, body_fat_mass_variation
             - basal_metabolic_rate_mean, basal_metabolic_rate_std_dev, basal_metabolic_rate_iqr, basal_metabolic_rate_month_to_month_change
     """
@@ -156,7 +162,7 @@ def calculate_monthly_stats(df: pl.DataFrame) -> pl.DataFrame:
     )
 
     # Define metrics to analyze
-    metrics = ["weight", "skeletal_muscle_mass", "body_fat_mass", "basal_metabolic_rate"]
+    metrics = ["weight", "muscle_mass", "body_fat_mass", "basal_metabolic_rate"]
 
     # Calculate all statistics in one go
     monthly_stats = (
@@ -169,9 +175,9 @@ def calculate_monthly_stats(df: pl.DataFrame) -> pl.DataFrame:
             pl.col("weight").mean().round(2).alias("weight_mean"),
             pl.col("weight").std().round(2).alias("weight_std_dev"),
 
-            # Skeletal muscle mass statistics
-            pl.col("skeletal_muscle_mass").mean().round(2).alias("skeletal_muscle_mass_mean"),
-            pl.col("skeletal_muscle_mass").std().round(2).alias("skeletal_muscle_mass_std_dev"),
+            # Muscle mass statistics
+            pl.col("muscle_mass").mean().round(2).alias("muscle_mass_mean"),
+            pl.col("muscle_mass").std().round(2).alias("muscle_mass_std_dev"),
 
             # Body fat mass statistics
             pl.col("body_fat_mass").mean().round(2).alias("body_fat_mass_mean"),

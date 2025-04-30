@@ -7,8 +7,8 @@ from scipy import stats
 
 def plot_variable_comparison(
     df,
-    x_var: Literal["weight", "skeletal_muscle_mass", "body_fat_mass", "basal_metabolic_rate"],
-    y_var: Literal["weight", "skeletal_muscle_mass", "body_fat_mass", "basal_metabolic_rate"],
+    x_var: Literal["weight", "muscle_mass", "body_fat_mass", "basal_metabolic_rate"],
+    y_var: Literal["weight", "muscle_mass", "body_fat_mass", "basal_metabolic_rate"],
     figsize: tuple[int, int] = (10, 6),
     title: str | None = None,
     x_label: str | None = None,
@@ -113,10 +113,11 @@ def plot_variable_comparison(
 
 def plot_monthly_progress(
     df: pl.DataFrame,
-    metric: Literal["weight", "skeletal_muscle_mass", "body_fat_mass"],
+    metric: Literal["weight", "muscle_mass", "body_fat_mass"],
     figsize: tuple[int, int] = (12, 6),
     title: Optional[str] = None,
     y_label: Optional[str] = None,
+    positive_change: bool = True,
 ) -> None:
     """
     Create a line plot showing monthly progress for a given metric, including standard deviation bands
@@ -124,7 +125,7 @@ def plot_monthly_progress(
 
     Args:
         df: Polars DataFrame containing monthly statistics data.
-        metric: The metric to plot (weight, skeletal_muscle_mass, or body_fat_mass).
+        metric: The metric to plot (weight, muscle_mass, or body_fat_mass).
         figsize: Size of the plot as (width, height) in inches.
         title: Optional custom title for the plot.
         y_label: Optional label for the y-axis.
@@ -168,6 +169,7 @@ def plot_monthly_progress(
     total_variation_percent = (total_variation / first_value) * 100 if first_value else 0
 
     # ----- Main Plot -----
+    main_color = '#00bfff'
     ax.plot(
         months,
         means,
@@ -175,7 +177,7 @@ def plot_monthly_progress(
         linestyle='-',
         linewidth=2,
         markersize=8,
-        color='#00bfff',
+        color=main_color,
         label=f'Monthly {metric.replace("_", " ").title()}'
     )
 
@@ -183,8 +185,8 @@ def plot_monthly_progress(
         months,
         means - stds,
         means + stds,
-        alpha=0.2,
-        color='#00bfff',
+        alpha=0.15,
+        color=main_color,
         label='Standard Deviation'
     )
 
@@ -199,7 +201,7 @@ def plot_monthly_progress(
             textcoords='offset points',
             ha='center',
             fontsize=10,
-            color='#ff6b6b' if var > 0 else '#4cd137'
+            color= '#4cd137' if (positive_change and var > 0) or (not positive_change and var < 0) else '#ff6b6b'
         )
 
     # ----- Labels and Aesthetics -----
@@ -219,7 +221,7 @@ def plot_monthly_progress(
         ax.spines[spine].set_color(text_color)
 
     ax.legend(fontsize=10, facecolor=background_color, edgecolor=text_color)
-    ax.grid(True, alpha=0.2, color=text_color)
+    ax.grid(True, alpha=0.2, color=text_color, linestyle='--')
 
     plt.tight_layout()
     plt.show()
