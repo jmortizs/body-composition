@@ -1,9 +1,11 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
 from typing import Literal, Optional
-import polars as pl
+
+import matplotlib.pyplot as plt
 import numpy as np
+import polars as pl
+import seaborn as sns
 from scipy import stats
+
 
 def plot_variable_comparison(
     df,
@@ -70,7 +72,7 @@ def plot_variable_comparison(
     y_line = slope * x_line + intercept
 
     # Plot regression line with dashed style and alpha
-    ax.plot(x_line, y_line, 'r--', alpha=0.8, label=f'y = {slope:.2f}x + {intercept:.2f}')
+    ax.plot(x_line, y_line, color='#eb3f7b', linestyle='--', alpha=0.85, label=f'trend: {slope:.2f}')
 
     # Get the colorbar from the scatter plot
     norm = plt.Normalize(df["elapse_days"].min(), df["elapse_days"].max())
@@ -84,7 +86,7 @@ def plot_variable_comparison(
 
     # Set title if provided, otherwise generate one
     if title is None:
-        title = f"{y_var} vs {x_var} by Days Elapsed"
+        title = f"{y_var.replace('_', ' ').title()} vs {x_var.replace('_', ' ').title()}\nR-squared: {r_value:.2f}"
     plt.title(title, pad=20, color=text_color)
 
     # Add labels
@@ -95,7 +97,7 @@ def plot_variable_comparison(
     ax.legend(fontsize=10, facecolor=background_color, edgecolor=text_color)
 
     # Add grid
-    plt.grid(True, alpha=0.2, color=text_color)
+    plt.grid(True, alpha=0.1, color=text_color, linestyle='--')
 
     # Remove top and right spines
     for spine in ['top', 'right']:
@@ -178,7 +180,9 @@ def plot_monthly_progress(
         linewidth=2,
         markersize=8,
         color=main_color,
-        label=f'Monthly {metric.replace("_", " ").title()}'
+        markerfacecolor='#1a1a1a',
+        markeredgecolor=main_color,
+        label=f'{metric.replace("_", " ").title()}'
     )
 
     ax.fill_between(
@@ -187,7 +191,7 @@ def plot_monthly_progress(
         means + stds,
         alpha=0.15,
         color=main_color,
-        label='Standard Deviation'
+        label=None
     )
 
     # ----- Annotations -----
@@ -206,7 +210,7 @@ def plot_monthly_progress(
 
     # ----- Labels and Aesthetics -----
     auto_title = (
-        f"Monthly Progress: {metric.replace('_', ' ').title()}\n"
+        f"{metric.replace('_', ' ').title()} Progress\n"
         f"Total Change: {total_variation:+.2f} ({total_variation_percent:+.1f}%)"
     )
     ax.set_title(title or auto_title, fontsize=14, pad=20)
@@ -221,7 +225,7 @@ def plot_monthly_progress(
         ax.spines[spine].set_color(text_color)
 
     ax.legend(fontsize=10, facecolor=background_color, edgecolor=text_color)
-    ax.grid(True, alpha=0.2, color=text_color, linestyle='--')
+    ax.grid(True, alpha=0.1, color=text_color, linestyle='--')
 
     plt.tight_layout()
     plt.show()

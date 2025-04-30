@@ -1,6 +1,8 @@
-import polars as pl
 from datetime import datetime
 from typing import Optional
+
+import polars as pl
+
 
 def load_data(
     file_path: str,
