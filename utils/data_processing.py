@@ -114,6 +114,12 @@ def load_data(
             .drop("date")
         )
 
+        # calculate percentage for muscle mass and body fat mass and round to 2 decimal places
+        df = df.with_columns(
+            (pl.col("muscle_mass") / pl.col("weight") * 100).round(2).alias("muscle_mass_percentage"),
+            (pl.col("body_fat_mass") / pl.col("weight") * 100).round(2).alias("body_fat_mass_percentage")
+        )
+
         # drop rows with null values
         df = df.drop_nulls()
 
