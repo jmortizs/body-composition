@@ -2,6 +2,7 @@ from typing import Literal, Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import polars as pl
 import seaborn as sns
 from scipy import stats
@@ -111,6 +112,169 @@ def plot_variable_comparison(
     # Show the plot
     plt.show()
 
+
+def plot_daily_progress(
+    df: pl.DataFrame,
+    metric: Literal["weight", "muscle_mass", "body_fat_mass", "basal_metabolic_rate", "body_fat_mass_percentage", "muscle_mass_percentage"],
+    figsize: tuple[int, int] = (12, 6),
+    title: Optional[str] = None,
+    x_label: Optional[str] = None,
+    y_label: Optional[str] = None,
+    use_elapsed_days: bool = True,
+) -> None:
+    """
+    Create a scatter plot showing daily progress of a given metric over time with a linear regression trend line.
+
+    Args:
+        df: Polars DataFrame containing body composition data with columns including the specified metric
+            and either 'elapse_days' or 'create_time'
+        metric: The metric to plot progress for
+        figsize: Figure size as (width, height) in inches
+        title: Optional title for the plot. If None, a default title will be generated
+        x_label: Optional label for the x-axis. If None, will use "Days Elapsed" or "Date"
+        y_label: Optional label for the y-axis. If None, the metric name will be used
+        use_elapsed_days: If True, use elapse_days for x-axis. If False, use create_time
+
+    Returns:
+        None
+    """
+    # ----- Configuration -----
+    plt.style.use('dark_background')
+    sns.set_style("darkgrid")
+
+    text_color = '#f0f5fa'
+    plt.rcParams.update({
+        'text.color': text_color,
+        'axes.labelcolor': text_color,
+        'xtick.color': text_color,
+        'ytick.color': text_color
+    })
+
+    # ----- Setup -----
+    fig, ax = plt.subplots(figsize=figsize)
+    background_color = '#1a1a1a'
+    fig.patch.set_facecolor(background_color)
+    ax.set_facecolor(background_color)
+
+    # Validate required columns
+    if metric not in df.columns:
+        raise ValueError(f"DataFrame must contain '{metric}' column.")
+
+    x_column = "elapse_days" if use_elapsed_days else "create_time"
+    if x_column not in df.columns:
+        raise ValueError(f"DataFrame must contain '{x_column}' column.")
+
+    # Handle edge cases
+    if df.is_empty():
+        raise ValueError("DataFrame is empty.")
+
+    # Prepare data for plotting
+    plot_data = df.select([x_column, metric]).drop_nulls()
+
+    if plot_data.is_empty():
+        raise ValueError(f"No valid data points found for {metric} and {x_column}.")
+
+    # Convert to pandas for seaborn compatibility if using create_time
+    if use_elapsed_days:
+        x_data = plot_data.get_column(x_column).to_numpy()
+        y_data = plot_data.get_column(metric).to_numpy()
+        plot_df = plot_data.to_pandas()
+    else:
+        # For datetime plotting, convert to pandas
+        plot_df = plot_data.to_pandas()
+        x_data = np.arange(len(plot_df))  # Use numeric index for regression
+        y_data = plot_df[metric].to_numpy()
+
+    # ----- Main Plot -----
+    main_color = '#2293f5'
+
+    if use_elapsed_days:
+        # Scatter plot with elapse_days
+        ax.scatter(
+            x_data,
+            y_data,
+            color=main_color,
+            alpha=0.6,
+            s=25,
+            edgecolors='white',
+            linewidth=0.5
+        )
+        x_for_regression = x_data
+    else:
+        # Scatter plot with dates
+        ax.scatter(
+            plot_df[x_column],
+            y_data,
+            color=main_color,
+            alpha=0.6,
+            s=25,
+            edgecolors='white',
+            linewidth=0.5
+        )
+        x_for_regression = x_data  # Use numeric index for regression calculation
+
+    # Calculate linear regression
+    slope, intercept, r_value, p_value, std_err = stats.linregress(x_for_regression, y_data)
+
+    # Create regression line
+    if use_elapsed_days:
+        x_line = np.linspace(x_data.min(), x_data.max(), 100)
+        y_line = slope * x_line + intercept
+        ax.plot(x_line, y_line, color='#f52245', linestyle='--', linewidth=2, alpha=0.95,
+                label=f'Trend: {slope:.3f}/day (R² = {r_value**2:.3f})')
+    else:
+        x_line_numeric = np.linspace(0, len(plot_df) - 1, 100)
+        y_line = slope * x_line_numeric + intercept
+        # Convert numeric line back to datetime for plotting
+        x_line_dates = pd.date_range(start=plot_df[x_column].min(),
+                                   end=plot_df[x_column].max(),
+                                   periods=100)
+        ax.plot(x_line_dates, y_line, color='#f52245', linestyle='--', linewidth=2, alpha=0.95,
+                label=f'Trend: {slope:.3f}/day (R² = {r_value**2:.3f})')
+
+    # Calculate overall progress
+    first_value, last_value = y_data[0], y_data[-1]
+    total_change = last_value - first_value
+    total_change_percent = (total_change / first_value) * 100 if first_value != 0 else 0
+
+    # ----- Labels and Aesthetics -----
+    # Set title if provided, otherwise generate one
+    if title is None:
+        period_text = f"{len(y_data)} days" if use_elapsed_days else f"{len(y_data)} records"
+        title = (f"{metric.replace('_', ' ').title()} Daily Progress\n"
+                f"Total Change: {total_change:+.2f} ({total_change_percent:+.1f}%) over {period_text}")
+
+    ax.set_title(title, fontsize=14, pad=20, color=text_color)
+
+    # Set axis labels
+    if x_label is None:
+        x_label = "Days Elapsed" if use_elapsed_days else "Date"
+    if y_label is None:
+        y_label = metric.replace("_", " ").title()
+
+    ax.set_xlabel(x_label, fontsize=12, color=text_color)
+    ax.set_ylabel(y_label, fontsize=12, color=text_color)
+
+    # Format x-axis for dates
+    if not use_elapsed_days:
+        ax.tick_params(axis='x', rotation=45)
+
+    ax.tick_params(axis='both', labelsize=10)
+
+    # Style the spines
+    for spine in ['top', 'right']:
+        ax.spines[spine].set_visible(False)
+    for spine in ['left', 'bottom']:
+        ax.spines[spine].set_color(text_color)
+
+    # Add legend
+    ax.legend(fontsize=10, facecolor=background_color, edgecolor=text_color)
+
+    # Add grid
+    ax.grid(True, alpha=0.1, color=text_color, linestyle='--')
+
+    plt.tight_layout()
+    plt.show()
 
 
 def plot_monthly_progress(
