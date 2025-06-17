@@ -3,6 +3,21 @@ const loading = document.getElementById('loading');
 const errorDiv = document.getElementById('error');
 const chartDiv = document.getElementById('chart');
 
+// Chart theme colors
+const chartTheme = {
+    background: '#2d2d2d',
+    text: '#ffffff',
+    grid: '#404040',
+    accent: '#031059',
+    marker: {
+        colorscale: [
+            [0, '#031059'],
+            [0.5, '#11A8A8'],
+            [1, '#D1F1CC']
+        ]
+    }
+};
+
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     loading.style.display = 'block';
@@ -39,46 +54,109 @@ function renderChart(data) {
         mode: 'markers',
         type: 'scatter',
         marker: {
-            size: 10,
+            size: 12,
             color: data.dataPoints.map(d => d.elapseDays),
-            colorscale: 'Viridis',
+            colorscale: chartTheme.marker.colorscale,
             colorbar: {
-                title: 'Days Elapsed',
-                thickness: 20
+                title: {
+                    text: 'Days Elapsed',
+                    font: {
+                        color: chartTheme.text,
+                        size: 12
+                    }
+                },
+                thickness: 20,
+                tickfont: {
+                    color: chartTheme.text,
+                    size: 10
+                }
             },
-            showscale: true
+            showscale: true,
+            line: {
+                color: chartTheme.background,
+                width: 1
+            }
+        },
+        hoverlabel: {
+            bgcolor: chartTheme.background,
+            font: {
+                color: chartTheme.text,
+                size: 12
+            }
         }
     };
+
     const layout = {
+        // Enable autosize to fit container
+        autosize: true,
+        // Set responsive width and height
+        width: null,
+        height: null,
+        paper_bgcolor: chartTheme.background,
+        plot_bgcolor: chartTheme.background,
+        font: {
+            color: chartTheme.text,
+            family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
         title: {
             text: data.title,
             font: {
-                size: 24
-            }
+                size: 24,
+                color: chartTheme.text
+            },
+            x: 0.5,
+            xanchor: 'center'
         },
         xaxis: {
             title: {
                 text: data.xAxisTitle,
                 font: {
-                    size: 16
+                    size: 16,
+                    color: chartTheme.text
                 }
+            },
+            gridcolor: chartTheme.grid,
+            zerolinecolor: chartTheme.grid,
+            tickfont: {
+                color: chartTheme.text
             }
         },
         yaxis: {
             title: {
                 text: data.yAxisTitle,
                 font: {
-                    size: 16
+                    size: 16,
+                    color: chartTheme.text
                 }
+            },
+            gridcolor: chartTheme.grid,
+            zerolinecolor: chartTheme.grid,
+            tickfont: {
+                color: chartTheme.text
             }
         },
         margin: {
-            l: 50,
-            r: 50,
-            b: 100,
+            l: 60,
+            r: 60,
+            b: 80,
             t: 100,
             pad: 4
-        }
+        },
+        showlegend: false,
+        hovermode: 'closest'
     };
-    Plotly.newPlot('chart', [trace], layout);
+
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toImage', 'sendDataToCloud']
+    };
+
+    Plotly.newPlot('chart', [trace], layout, config).then(() => {
+        // Ensure the chart resizes properly with the window
+        window.addEventListener('resize', () => {
+            Plotly.Plots.resize('chart');
+        });
+    });
 }
