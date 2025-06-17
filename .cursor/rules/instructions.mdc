@@ -1,0 +1,58 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+I am building a data visualization web application using the following technology stack:
+
+Frontend: Pure HTML and JavaScript (no frameworks)
+Backend: Python with FastAPI
+Database: MongoDB
+Charts Library: Plotly (for rendering charts in the frontend)
+
+Please help me by providing detailed, step-by-step guidance on building this application. Your answers should include:
+
+Project Structure and Patterns:
+
+Recommend a clear folder structure for both backend and frontend.
+Suggest architectural patterns (such as separation of concerns, MVC, or others where applicable).
+
+Backend Implementation:
+
+How to set up FastAPI with MongoDB.
+Example endpoints to fetch data (JSON) for charts, with proper async usage.
+Best practices for error handling and validation (using Pydantic models, try/except, etc.).
+Tips for secure API development (e.g., CORS, sanitizing inputs, avoiding injection).
+
+Frontend Implementation:
+
+How to fetch data from the FastAPI backend using plain JavaScript (using fetch API).
+How to render interactive Plotly charts using the data returned from the backend.
+Examples of modular and maintainable JavaScript code, with clear separation between data fetching, data processing, and chart rendering.
+Tips for user experience and error handling on the frontend (e.g., loading states, user-friendly error messages).
+
+General Best Practices:
+
+Suggestions for configuration management (e.g., storing secrets, database URLs).
+Guidance on logging and monitoring errors both on backend and frontend.
+Tips for testing endpoints and frontend functions.
+
+For every code example, include comments explaining why things are done in a certain way, especially regarding error handling, validation, and code organization.
+
+Please give recommendations based on current best practices as of 2025, and be clear about how to avoid common pitfalls with this stack.
+
+Plotly version >= 3.0
+
+This is an example of the documnet schema in the database:
+{
+  "measureDate": {
+    "$date": "2025-06-16T08:40:42.627Z"
+  },
+  "deviceId": "aNyZC8jwH3",
+  "basalMetabolicRate": 1606,
+  "bodyFatMass": 10.76,
+  "muscleMass": 31.23,
+  "timeOffset": "UTC-0500",
+  "totalBodyWater": 41.98,
+  "weight": 68
+}

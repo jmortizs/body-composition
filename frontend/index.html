@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Body Composition Scatter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+    <h1>Scatter Plot: Compare Measurements</h1>
+    <form id="controls">
+        <label>
+            Start Date:
+            <input type="date" id="startDate" value="2024-01-01" required>
+        </label>
+        <label>
+            End Date:
+            <input type="date" id="endDate" value="2024-12-31" required>
+        </label>
+        <label>
+            X Axis:
+            <select id="xField">
+                <option value="muscleMass">Muscle Mass</option>
+                <option value="weight" selected>Weight</option>
+                <option value="bodyFatMass">Body Fat Mass</option>
+                <option value="totalBodyWater">Total Body Water</option>
+                <option value="basalMetabolicRate">Basal Metabolic Rate</option>
+            </select>
+        </label>
+        <label>
+            Y Axis:
+            <select id="yField">
+                <option value="muscleMass" selected>Muscle Mass</option>
+                <option value="weight">Weight</option>
+                <option value="bodyFatMass">Body Fat Mass</option>
+                <option value="totalBodyWater">Total Body Water</option>
+                <option value="basalMetabolicRate">Basal Metabolic Rate</option>
+            </select>
+        </label>
+        <button type="submit">Update Chart</button>
+    </form>
+    <div id="loading" style="display:none;">Loading...</div>
+    <div id="error" style="display:none;color:red;"></div>
+    <div id="chart"></div>
+    <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

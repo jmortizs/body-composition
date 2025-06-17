@@ -19,3 +19,6 @@ wheels/
 *.gif
 *.bmp
 *.tiff
+
+.env
+.vscode
