@@ -22,9 +22,6 @@
                 End Date:
                 <input type="date" id="endDate" value="2025-06-30" required>
             </label>
-            <button type="submit" title="Refresh">
-                &#x21bb;
-            </button>
         </form>
     </section>
 
@@ -34,27 +31,12 @@
         <form id="axisControls">
             <label>
                 X Axis:
-                <select id="xField">
-                    <option value="muscleMass">Muscle Mass</option>
-                    <option value="weight" selected>Weight</option>
-                    <option value="bodyFatMass">Body Fat Mass</option>
-                    <option value="totalBodyWater">Total Body Water</option>
-                    <option value="basalMetabolicRate">Basal Metabolic Rate</option>
-                </select>
+                <select id="xField"></select>
             </label>
             <label>
                 Y Axis:
-                <select id="yField">
-                    <option value="muscleMass" selected>Muscle Mass</option>
-                    <option value="weight">Weight</option>
-                    <option value="bodyFatMass">Body Fat Mass</option>
-                    <option value="totalBodyWater">Total Body Water</option>
-                    <option value="basalMetabolicRate">Basal Metabolic Rate</option>
-                </select>
+                <select id="yField"></select>
             </label>
-            <button type="submit" title="Refresh">
-                &#x21bb;
-            </button>
         </form>
         <div id="loading" style="display:none;">Loading...</div>
         <div id="error" style="display:none;color:red;"></div>
@@ -67,13 +49,7 @@
         <form id="timeSeriesControls">
             <label>
                 Measurement Field:
-                <select id="measureField">
-                    <option value="muscleMass">Muscle Mass</option>
-                    <option value="weight" selected>Weight</option>
-                    <option value="bodyFatMass">Body Fat Mass</option>
-                    <option value="totalBodyWater">Total Body Water</option>
-                    <option value="basalMetabolicRate">Basal Metabolic Rate</option>
-                </select>
+                <select id="measureField"></select>
             </label>
             <label>
                 Group Time (days):
@@ -83,9 +59,6 @@
                     <option value="28" selected>28</option>
                 </select>
             </label>
-            <button type="submit" title="Refresh">
-                &#x21bb;
-            </button>
         </form>
         <div id="loading-time-series" style="display:none;">Loading...</div>
         <div id="error-time-series" style="display:none;color:red;"></div>

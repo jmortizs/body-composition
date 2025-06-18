@@ -32,30 +32,61 @@ const chartTheme = {
     }
 };
 
-// Global date filter event handler
-dateFilterForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    // Update global date filter state
-    globalDateFilter.startDate = document.getElementById('startDate').value;
-    globalDateFilter.endDate = document.getElementById('endDate').value;
+// Centralized list of measurement fields and their display names
+const measurementFields = [
+    { value: 'basalMetabolicRate', label: 'Basal Metabolic Rate' },
+    { value: 'bodyFatMass', label: 'Body Fat Mass' },
+    { value: 'muscleMass', label: 'Muscle Mass' },
+    { value: 'totalBodyWater', label: 'Total Body Water' },
+    { value: 'weight', label: 'Weight' }
+];
 
-    // Trigger refresh of all charts that depend on date filter
+/**
+ * Populates a <select> element with measurement field options.
+ * @param {HTMLSelectElement} selectElement - The select element to populate.
+ * @param {string} defaultValue - The value to select by default.
+ */
+function populateMeasurementSelect(selectElement, defaultValue) {
+    selectElement.innerHTML = '';
+    measurementFields.forEach(field => {
+        const option = document.createElement('option');
+        option.value = field.value;
+        option.textContent = field.label;
+        if (field.value === defaultValue) {
+            option.selected = true;
+        }
+        selectElement.appendChild(option);
+    });
+}
+
+// Global date filter event handler (auto-refresh on change)
+document.getElementById('startDate').addEventListener('change', () => {
+    globalDateFilter.startDate = document.getElementById('startDate').value;
     refreshMeasurementsChart();
     refreshTimeSeriesChart();
-    // TODO: Add other chart refresh calls here as they are implemented
-    // e.g., refreshTrendChart(), refreshComparisonChart(), etc.
+});
+document.getElementById('endDate').addEventListener('change', () => {
+    globalDateFilter.endDate = document.getElementById('endDate').value;
+    refreshMeasurementsChart();
+    refreshTimeSeriesChart();
 });
 
-// Measurements chart axis controls event handler
-axisControlsForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+// Measurements chart axis controls event handler (auto-refresh on change)
+document.getElementById('xField').addEventListener('change', () => {
+    refreshMeasurementsChart();
+});
+document.getElementById('yField').addEventListener('change', () => {
     refreshMeasurementsChart();
 });
 
-// Time-Series chart controls event handler
-if (timeSeriesControlsForm) {
-    timeSeriesControlsForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+// Time-Series chart controls event handler (auto-refresh on change)
+if (document.getElementById('measureField')) {
+    document.getElementById('measureField').addEventListener('change', () => {
+        refreshTimeSeriesChart();
+    });
+}
+if (document.getElementById('groupTime')) {
+    document.getElementById('groupTime').addEventListener('change', () => {
         refreshTimeSeriesChart();
     });
 }
@@ -112,10 +143,13 @@ async function refreshTimeSeriesChart() {
 
 // Initialize the page by loading the chart with default settings
 document.addEventListener('DOMContentLoaded', () => {
+    // Populate selectors with measurement fields
+    populateMeasurementSelect(document.getElementById('xField'), 'weight');
+    populateMeasurementSelect(document.getElementById('yField'), 'muscleMass');
+    populateMeasurementSelect(document.getElementById('measureField'), 'weight');
     // Set initial date values from global state
     document.getElementById('startDate').value = globalDateFilter.startDate;
     document.getElementById('endDate').value = globalDateFilter.endDate;
-
     // Load initial chart
     refreshMeasurementsChart();
     refreshTimeSeriesChart();

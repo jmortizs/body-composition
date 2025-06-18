@@ -178,7 +178,7 @@ async def get_time_progression(
 
     # Create the response
     answer = TimeProgressionChart(
-        title=f"{display_units_map[measure_field]['display_name']} Progression (grouped by {group_time} days, {len(results)} periods)",
+        title=f"{display_units_map[measure_field]['display_name']} Progression\n({group_time} days intervals)",
         xAxisTitle="Date",
         yAxisTitle=f"{display_units_map[measure_field]['display_name']} ({display_units_map[measure_field]['units']})",
         dataPoints=results
