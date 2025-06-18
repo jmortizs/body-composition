@@ -13,13 +13,15 @@ class ScatterPoint(BaseModel):
     date: datetime = Field(..., description="Measurement date")
     elapseDays: int = Field(..., description="Elapse days since first measurement")
 
+class MetricsRelationshipChart(BaseChart):
+    correlation: float = Field(..., description="Correlation coefficient")
+    dataPoints: list[ScatterPoint] = Field(..., alias="dataPoints", description="Data points")
+
 class TimeProgressionPoint(BaseModel):
     value: float = Field(..., description="Value")
     std: float = Field(..., description="Standard deviation")
     date: datetime = Field(..., description="Measurement date")
 
-class MetricsRelationshipChart(BaseChart):
-    dataPoints: list[ScatterPoint] = Field(..., alias="dataPoints", description="Data points")
 
 class TimeProgressionChart(BaseChart):
     dataPoints: list[TimeProgressionPoint] = Field(..., alias="dataPoints", description="Data points")

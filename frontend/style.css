@@ -9,9 +9,9 @@
     --success: #22c55e;
     --spacing-xs: 0.5rem;
     --spacing-sm: 1rem;
-    --spacing-md: 1.5rem;
+    --spacing-md: 1.0rem;
     --spacing-lg: 2rem;
-    --border-radius: 8px;
+    --border-radius: 4px;
 }
 
 * {
@@ -33,13 +33,13 @@ body {
     flex-direction: column;
 }
 
-h1 {
+/* h1 {
     font-size: 2.5rem;
     margin-bottom: var(--spacing-lg);
     color: var(--text-primary);
     text-align: center;
     font-weight: 600;
-}
+} */
 
 h2 {
     font-size: 1.5rem;

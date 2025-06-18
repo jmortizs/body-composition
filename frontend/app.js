@@ -141,15 +141,31 @@ async function refreshTimeSeriesChart() {
     }
 }
 
+// Utility to format date as YYYY-MM-DD
+function formatDate(date) {
+    return date.toISOString().slice(0, 10);
+}
+
+// Set default date values dynamically
+function setDefaultDateRange() {
+    const end = new Date();
+    const start = new Date(end.getFullYear() - 1, end.getMonth(), 1); // first day of month, one year before end
+    const startDateStr = formatDate(start);
+    const endDateStr = formatDate(end);
+    document.getElementById('startDate').value = startDateStr;
+    document.getElementById('endDate').value = endDateStr;
+    globalDateFilter.startDate = startDateStr;
+    globalDateFilter.endDate = endDateStr;
+}
+
 // Initialize the page by loading the chart with default settings
 document.addEventListener('DOMContentLoaded', () => {
     // Populate selectors with measurement fields
     populateMeasurementSelect(document.getElementById('xField'), 'weight');
     populateMeasurementSelect(document.getElementById('yField'), 'muscleMass');
     populateMeasurementSelect(document.getElementById('measureField'), 'weight');
-    // Set initial date values from global state
-    document.getElementById('startDate').value = globalDateFilter.startDate;
-    document.getElementById('endDate').value = globalDateFilter.endDate;
+    // Set initial date values dynamically
+    setDefaultDateRange();
     // Load initial chart
     refreshMeasurementsChart();
     refreshTimeSeriesChart();
@@ -160,6 +176,11 @@ function renderChart(data, xField, yField) {
     if (!data.dataPoints.length) {
         chartDiv.innerHTML = 'No data for selected range/fields.';
         return;
+    }
+    // Prepare correlation legend text if available
+    let correlationText = '';
+    if (typeof data.correlation === 'number' && !isNaN(data.correlation)) {
+        correlationText = `Correlation: ${data.correlation.toFixed(3)}`;
     }
     const trace = {
         x: data.dataPoints.map(d => d.x),
@@ -213,7 +234,7 @@ function renderChart(data, xField, yField) {
             family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
         },
         title: {
-            text: data.title,
+            text: data.title + (correlationText ? `<br><span style=\"font-size:16px;color:#11A8A8\">${correlationText}</span>` : ''),
             font: {
                 size: 24,
                 color: chartTheme.text

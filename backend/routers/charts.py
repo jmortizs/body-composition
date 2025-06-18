@@ -71,18 +71,36 @@ async def get_scatter(
 
     cursor = await collection.aggregate(pipeline)
     results = []
+    x_values = []
+    y_values = []
     async for doc in cursor:
+        x_val = round(doc[f'avg{x_field}'], 2)
+        y_val = round(doc[f'avg{y_field}'], 2)
         results.append(ScatterPoint(
-            x=round(doc[f'avg{x_field}'], 2),
-            y=round(doc[f'avg{y_field}'], 2),
+            x=x_val,
+            y=y_val,
             date=datetime.fromisoformat(doc['_id']),
             elapseDays=(datetime.fromisoformat(doc['_id']) - start).days
         ))
+        x_values.append(x_val)
+        y_values.append(y_val)
+
+    # Calculate correlation coefficient (Pearson)
+    correlation = None
+    if len(x_values) > 1 and len(y_values) > 1:
+        try:
+            import numpy as np
+            correlation = float(np.corrcoef(x_values, y_values)[0, 1])
+        except Exception:
+            correlation = None
+    else:
+        correlation = None
 
     answer = MetricsRelationshipChart(
         title=f"{display_units_map[x_field]['display_name']} vs {display_units_map[y_field]['display_name']} (total records: {len(results)})",
         xAxisTitle=f"{display_units_map[x_field]['display_name']} ({display_units_map[x_field]['units']})",
         yAxisTitle=f"{display_units_map[y_field]['display_name']} ({display_units_map[y_field]['units']})",
+        correlation=correlation,
         dataPoints=results
     )
 
@@ -131,48 +149,57 @@ async def get_time_progression(
     if not data:
         raise HTTPException(status_code=404, detail="No data found for the specified date range")
 
-    # Convert to Polars DataFrame for efficient processing
+    # Convert to Polars DataFrame (ensure measureDate is datetime)
     df = pl.DataFrame(data)
+    if df['measureDate'].dtype != pl.Datetime:
+        df = df.with_columns([
+            pl.col("measureDate").str.strptime(pl.Datetime, fmt=None, strict=False).alias("measureDate")
+        ])
 
-    # if max date is before the end date, set the end date to the max date
-    if df['measureDate'].max() < end:
-        end = df['measureDate'].max().replace(hour=0, minute=0, second=0, microsecond=0)
+    # If max date is before the end date, set the end date to the max date
+    max_date = df['measureDate'].max()
+    if max_date < end:
+        end = max_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Add a column for the time group (period number)
-    # Calculate days since start date and group by the specified interval
-    df = df.with_columns([
-        # Calculate days since start date
-        ((pl.col("measureDate") - start).dt.total_days()).alias("days_since_start"),
+    # Use Polars lazy API for efficient processing
+    ldf = df.lazy()
+
+    # Calculate days since start and group number
+    ldf = ldf.with_columns([
+        ((pl.col("measureDate") - pl.lit(start)).dt.total_days()).alias("days_since_start"),
+        ( ( (pl.col("measureDate") - pl.lit(start)).dt.total_days() // group_time ).cast(pl.Int32) ).alias("time_group"),
     ])
 
-    # Create time groups based on the group_time parameter
-    df = df.with_columns([
-        # Group number (0-indexed)
-        (pl.col("days_since_start") // group_time).cast(pl.Int32).alias("time_group")
-    ])
-
-    # Group by time periods and calculate mean
-    grouped_df = df.group_by("time_group").agg([
+    # Group by time_group and aggregate
+    grouped_ldf = ldf.group_by("time_group").agg([
         pl.col(measure_field).mean().alias("mean_value"),
         pl.col(measure_field).std().alias("std_value"),
-        pl.col("measureDate").min().alias("group_start_date"),  # Use the earliest date in the group as representative
+        pl.col("measureDate").min().alias("group_start_date"),
+        pl.col("measureDate").max().alias("group_end_date"),
     ]).sort("time_group")
 
-            # Convert to TimeProgressionPoint objects
+    grouped_df = grouped_ldf.with_columns([
+        pl.col("std_value").fill_null(0)
+    ]).collect()
+
+    # Use the midpoint of each group as the representative date
     results = []
     for row in grouped_df.iter_rows(named=True):
-        # Calculate the representative date for this group (end of the period)
-        group_start_days = row["time_group"] * group_time
-        group_end_days = group_start_days + group_time
-        representative_date = start + timedelta(days=group_end_days)
-
+        group_start_date = row["group_start_date"]
+        group_end_date = row["group_end_date"]
+        # Calculate midpoint between group_start_date and group_end_date
+        if group_start_date and group_end_date:
+            midpoint_timestamp = group_start_date.timestamp() + (group_end_date.timestamp() - group_start_date.timestamp()) / 2
+            representative_date = datetime.fromtimestamp(midpoint_timestamp)
+        else:
+            # Fallback: use group_start_date or start
+            representative_date = group_start_date or start
         # Cap the representative date at the actual end date if it exceeds it
         if representative_date > end:
             representative_date = end
-
         results.append(TimeProgressionPoint(
-            value=round(row["mean_value"], 2),
-            std=round(row["std_value"], 2),
+            value=round(row["mean_value"], 2) if row["mean_value"] is not None else None,
+            std=round(row["std_value"], 2) if row["std_value"] is not None else 0,
             date=representative_date
         ))
 
