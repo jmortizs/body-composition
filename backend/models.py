@@ -22,9 +22,14 @@ class TimeProgressionPoint(BaseModel):
     std: float = Field(..., description="Standard deviation")
     date: datetime = Field(..., description="Measurement date")
 
-
 class TimeProgressionChart(BaseChart):
     dataPoints: list[TimeProgressionPoint] = Field(..., alias="dataPoints", description="Data points")
+
+class VariationCard(BaseModel):
+    measure: str = Field(..., description="Measure field")
+    value: float = Field(..., description="Value")
+    variation: float = Field(..., description="Percentage variation")
+    positive: bool = Field(..., description="If increment is better than decrement")
 
 
 

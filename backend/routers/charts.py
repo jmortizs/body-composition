@@ -1,11 +1,13 @@
 from datetime import datetime, timedelta
 
+import polars as pl
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pymongo import AsyncMongoClient
-import polars as pl
 
 from backend.db import MongoDBClient
-from backend.models import MetricsRelationshipChart, ScatterPoint, TimeProgressionChart, TimeProgressionPoint
+from backend.models import (MetricsRelationshipChart, ScatterPoint,
+                            TimeProgressionChart, TimeProgressionPoint,
+                            VariationCard)
 
 router = APIRouter()
 
@@ -212,3 +214,129 @@ async def get_time_progression(
     )
 
     return answer
+
+@router.get("/variation-card", response_model=list[VariationCard])
+async def get_variation_card(
+    start_date: str = Query(..., description="Start date (YYYY-MM-DD)", example="2025-01-01"),
+    end_date: str = Query(..., description="End date (YYYY-MM-DD)", example=datetime.now().strftime("%Y-%m-%d")),
+    db: AsyncMongoClient = Depends(MongoDBClient.get_database)
+):
+    # Validate date format
+    try:
+        start = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, microsecond=999999)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid date format")
+
+    # Calculate days between start and end
+    days = (end - start).days
+    if days <= 0:
+        raise HTTPException(status_code=400, detail="End date must be after start date")
+
+    previous_period_start = start - timedelta(days=days)
+
+    # Query MongoDB once for the entire range (previous_period_start to end_date)
+    collection = db.get_collection("body_composition")
+
+    match = {
+        'measureDate': {
+            '$gte': previous_period_start,
+            '$lte': end
+        }
+    }
+
+    cursor = collection.find(match, projection={'_id': 0, 'deviceId': 0, 'timeOffset': 0})
+    all_data: list[dict] = []
+    async for doc in cursor:
+        all_data.append(doc)
+
+    if not all_data:
+        raise HTTPException(status_code=404, detail="No data found for the specified date range")
+
+    # Convert to Polars DataFrame and filter in memory
+    df = pl.DataFrame(all_data)
+
+    # Filter data for current period (start_date to end_date)
+    current_data = df.filter(
+        (pl.col("measureDate") >= start) & (pl.col("measureDate") <= end)
+    )
+
+    # Filter data for previous period (previous_period_start to start_date)
+    previous_data = df.filter(
+        (pl.col("measureDate") >= previous_period_start) & (pl.col("measureDate") < start)
+    )
+
+    if current_data.height == 0:
+        raise HTTPException(status_code=404, detail="No data found for the current period")
+
+    # Define the measures to analyze
+    measures = ["muscleMass", "weight", "bodyFatMass", "totalBodyWater", "basalMetabolicRate"]
+
+    # Define which measures are better when they increase (positive=True)
+    # For body composition, typically muscle mass and basal metabolic rate are better when higher
+    # Body fat mass is better when lower, weight depends on goals
+    positive_measures = {
+        "muscleMass": True,  # Better when higher
+        "weight": True,     # Depends on goals, default to False
+        "bodyFatMass": False,  # Better when lower
+        "totalBodyWater": True,  # Better when higher (indicates good hydration)
+        "basalMetabolicRate": True  # Better when higher
+    }
+
+    results = []
+
+    for measure in measures:
+        try:
+            # Calculate net gain for current period
+            if current_data.height == 0:
+                continue
+
+            # Sort by date and get first and last values
+            current_sorted = current_data.sort("measureDate")
+            current_first = current_sorted.select(measure).item(0, 0)
+            current_last = current_sorted.select(measure).item(-1, 0)
+            current_gain = current_last - current_first
+
+            # Calculate net gain for previous period
+            previous_gain = 0
+            if previous_data.height > 0:
+                previous_sorted = previous_data.sort("measureDate")
+                previous_first = previous_sorted.select(measure).item(0, 0)
+                previous_last = previous_sorted.select(measure).item(-1, 0)
+                previous_gain = previous_last - previous_first
+
+            # Calculate percentage variation
+            # If previous gain is 0, we can't calculate percentage variation
+            if previous_gain == 0:
+                if current_gain == 0:
+                    variation = 0.0
+                else:
+                    # If previous was 0 and current has gain, it's a 100% improvement
+                    variation = 100.0 if current_gain > 0 else -100.0
+            else:
+                variation = ((current_gain - previous_gain) / abs(previous_gain)) * 100
+
+            # Determine if the variation is positive (better)
+            is_positive = positive_measures[measure]
+            if is_positive:
+                # For positive measures, higher values are better
+                variation_is_positive = variation > 0
+            else:
+                # For negative measures, lower values are better
+                variation_is_positive = variation < 0
+
+            results.append(VariationCard(
+                measure=display_units_map[measure]['display_name'],
+                value=round(current_gain, 2),
+                variation=round(variation, 2),
+                positive=variation_is_positive
+            ))
+
+        except Exception as e:
+            # Skip this measure if there's an error, but continue with others
+            continue
+
+    if not results:
+        raise HTTPException(status_code=404, detail="No valid variation calculations could be performed")
+
+    return results

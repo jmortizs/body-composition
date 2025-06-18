@@ -64,11 +64,13 @@ document.getElementById('startDate').addEventListener('change', () => {
     globalDateFilter.startDate = document.getElementById('startDate').value;
     refreshMeasurementsChart();
     refreshTimeSeriesChart();
+    refreshVariationCards();
 });
 document.getElementById('endDate').addEventListener('change', () => {
     globalDateFilter.endDate = document.getElementById('endDate').value;
     refreshMeasurementsChart();
     refreshTimeSeriesChart();
+    refreshVariationCards();
 });
 
 // Measurements chart axis controls event handler (auto-refresh on change)
@@ -141,6 +143,51 @@ async function refreshTimeSeriesChart() {
     }
 }
 
+// Fetch and render variation cards
+async function refreshVariationCards() {
+    const cardsContainer = document.getElementById('variation-cards');
+    cardsContainer.innerHTML = '';
+    try {
+        const url = `http://localhost:8080/api/v1/variation-card?start_date=${globalDateFilter.startDate}&end_date=${globalDateFilter.endDate}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        renderVariationCards(data);
+    } catch (err) {
+        cardsContainer.innerHTML = `<div style="color: var(--error); padding: 1rem;">${err.message || 'Failed to load variation cards.'}</div>`;
+    }
+}
+
+function renderVariationCards(cards) {
+    const container = document.getElementById('variation-cards');
+    if (!cards.length) {
+        container.innerHTML = '<div style="color: var(--text-secondary);">No variation data for this period.</div>';
+        return;
+    }
+    container.innerHTML = '';
+    cards.forEach(card => {
+        // Arrow and color based on positive/negative
+        const isPositive = card.positive;
+        const arrow = card.variation > 0 ? '▲' : '▼';
+        const cardClass = isPositive ? 'positive' : 'negative';
+        // Format value and percent
+        const valueStr = (card.value >= 0 ? '+' : '') + card.value.toFixed(2);
+        const percentStr = Math.abs(card.variation).toFixed(0) + '%';
+        // Card HTML
+        const cardDiv = document.createElement('div');
+        cardDiv.className = `variation-card ${cardClass}`;
+        cardDiv.innerHTML = `
+            <div class="measure">${card.measure}</div>
+            <div class="value">${valueStr}</div>
+            <div class="variation ${cardClass}">
+                <span class="arrow">${arrow}</span>
+                <span>${percentStr}</span>
+            </div>
+        `;
+        container.appendChild(cardDiv);
+    });
+}
+
 // Utility to format date as YYYY-MM-DD
 function formatDate(date) {
     return date.toISOString().slice(0, 10);
@@ -149,7 +196,7 @@ function formatDate(date) {
 // Set default date values dynamically
 function setDefaultDateRange() {
     const end = new Date();
-    const start = new Date(end.getFullYear() - 1, end.getMonth(), 1); // first day of month, one year before end
+    const start = new Date(end.getFullYear(), end.getMonth() - 1, 1); // first day of previous month
     const startDateStr = formatDate(start);
     const endDateStr = formatDate(end);
     document.getElementById('startDate').value = startDateStr;
@@ -169,6 +216,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Load initial chart
     refreshMeasurementsChart();
     refreshTimeSeriesChart();
+    refreshVariationCards();
 });
 
 function renderChart(data, xField, yField) {

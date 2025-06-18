@@ -250,3 +250,75 @@ button[type="submit"]:active {
         justify-self: stretch;
     }
 }
+
+#variation-cards-section {
+    margin-top: var(--spacing-lg);
+}
+
+.variation-cards-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--spacing-md);
+    margin-top: var(--spacing-md);
+}
+
+.variation-card {
+    background: var(--bg-secondary);
+    border: 2px solid #fff2;
+    border-radius: var(--border-radius);
+    padding: 1.5rem 2rem;
+    min-width: 180px;
+    min-height: 160px;
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px 0 #0002;
+    font-family: inherit;
+    transition: border 0.2s;
+}
+
+.variation-card .measure {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.variation-card .value {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+    color: var(--text-primary);
+}
+
+.variation-card .variation {
+    display: flex;
+    align-items: center;
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.variation-card .variation .arrow {
+    font-size: 2rem;
+    margin-right: 0.3em;
+}
+
+.variation-card.positive {
+    border-color: var(--success);
+}
+
+.variation-card.negative {
+    border-color: var(--error);
+}
+
+.variation-card .variation.positive {
+    color: var(--success);
+}
+
+.variation-card .variation.negative {
+    color: var(--error);
+}
