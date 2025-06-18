@@ -30,8 +30,8 @@ async def get_scatter(
 ):
     # Validate date format
     try:
-        start = datetime.fromisoformat(start_date)
-        end = datetime.fromisoformat(end_date)
+        start = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, microsecond=999999)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format")
     # Validate fields
@@ -114,13 +114,13 @@ async def get_time_progression(
     start_date: str = Query(..., description="Start date (YYYY-MM-DD)", example="2025-01-01"),
     end_date: str = Query(..., description="End date (YYYY-MM-DD)", example=datetime.now().strftime("%Y-%m-%d")),
     measure_field: str = Query(..., description="Field for X axis", example="muscleMass"),
-    group_time: int = Query(..., description="Group time in days", ge=7, example=28),
+    group_time: int = Query(..., description="Group time in days (1 = no grouping)", ge=1, example=28),
     db: AsyncMongoClient = Depends(MongoDBClient.get_database)
 ):
     # Validate date format
     try:
-        start = datetime.fromisoformat(start_date)
-        end = datetime.fromisoformat(end_date)
+        start = datetime.fromisoformat(start_date).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = datetime.fromisoformat(end_date).replace(hour=23, minute=59, second=59, microsecond=999999)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid date format")
 
@@ -163,51 +163,68 @@ async def get_time_progression(
     if max_date < end:
         end = max_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Use Polars lazy API for efficient processing
-    ldf = df.lazy()
+    # Handle no grouping case (group_time == 1)
+    if group_time == 1:
+        # Sort by date and return individual data points
+        sorted_df = df.sort("measureDate")
+        results = []
+        for row in sorted_df.iter_rows(named=True):
+            results.append(TimeProgressionPoint(
+                value=round(row[measure_field], 2) if row[measure_field] is not None else None,
+                std=0,  # No standard deviation for individual points
+                date=row["measureDate"]
+            ))
+    else:
+        # Use Polars lazy API for efficient processing with grouping
+        ldf = df.lazy()
 
-    # Calculate days since start and group number
-    ldf = ldf.with_columns([
-        ((pl.col("measureDate") - pl.lit(start)).dt.total_days()).alias("days_since_start"),
-        ( ( (pl.col("measureDate") - pl.lit(start)).dt.total_days() // group_time ).cast(pl.Int32) ).alias("time_group"),
-    ])
+        # Calculate days since start and group number
+        ldf = ldf.with_columns([
+            ((pl.col("measureDate") - pl.lit(start)).dt.total_days()).alias("days_since_start"),
+            ( ( (pl.col("measureDate") - pl.lit(start)).dt.total_days() // group_time ).cast(pl.Int32) ).alias("time_group"),
+        ])
 
-    # Group by time_group and aggregate
-    grouped_ldf = ldf.group_by("time_group").agg([
-        pl.col(measure_field).mean().alias("mean_value"),
-        pl.col(measure_field).std().alias("std_value"),
-        pl.col("measureDate").min().alias("group_start_date"),
-        pl.col("measureDate").max().alias("group_end_date"),
-    ]).sort("time_group")
+        # Group by time_group and aggregate
+        grouped_ldf = ldf.group_by("time_group").agg([
+            pl.col(measure_field).mean().alias("mean_value"),
+            pl.col(measure_field).std().alias("std_value"),
+            pl.col("measureDate").min().alias("group_start_date"),
+            pl.col("measureDate").max().alias("group_end_date"),
+        ]).sort("time_group")
 
-    grouped_df = grouped_ldf.with_columns([
-        pl.col("std_value").fill_null(0)
-    ]).collect()
+        grouped_df = grouped_ldf.with_columns([
+            pl.col("std_value").fill_null(0)
+        ]).collect()
 
-    # Use the midpoint of each group as the representative date
-    results = []
-    for row in grouped_df.iter_rows(named=True):
-        group_start_date = row["group_start_date"]
-        group_end_date = row["group_end_date"]
-        # Calculate midpoint between group_start_date and group_end_date
-        if group_start_date and group_end_date:
-            midpoint_timestamp = group_start_date.timestamp() + (group_end_date.timestamp() - group_start_date.timestamp()) / 2
-            representative_date = datetime.fromtimestamp(midpoint_timestamp)
-        else:
-            # Fallback: use group_start_date or start
-            representative_date = group_start_date or start
-        # Cap the representative date at the actual end date if it exceeds it
-        if representative_date > end:
-            representative_date = end
-        results.append(TimeProgressionPoint(
-            value=round(row["mean_value"], 2) if row["mean_value"] is not None else None,
-            std=round(row["std_value"], 2) if row["std_value"] is not None else 0,
-            date=representative_date
-        ))
+        # Use the midpoint of each group as the representative date
+        results = []
+        for row in grouped_df.iter_rows(named=True):
+            group_start_date = row["group_start_date"]
+            group_end_date = row["group_end_date"]
+            # Calculate midpoint between group_start_date and group_end_date
+            if group_start_date and group_end_date:
+                midpoint_timestamp = group_start_date.timestamp() + (group_end_date.timestamp() - group_start_date.timestamp()) / 2
+                representative_date = datetime.fromtimestamp(midpoint_timestamp)
+            else:
+                # Fallback: use group_start_date or start
+                representative_date = group_start_date or start
+            # Cap the representative date at the actual end date if it exceeds it
+            if representative_date > end:
+                representative_date = end
+            results.append(TimeProgressionPoint(
+                value=round(row["mean_value"], 2) if row["mean_value"] is not None else None,
+                std=round(row["std_value"], 2) if row["std_value"] is not None else 0,
+                date=representative_date
+            ))
 
-    # Create the response
+    # Create the response with appropriate title
+    if group_time == 1:
+        title = f"{display_units_map[measure_field]['display_name']} Progression\n(Individual measurements)"
+    else:
+        title = f"{display_units_map[measure_field]['display_name']} Progression\n({group_time} days intervals)"
+
     answer = TimeProgressionChart(
-        title=f"{display_units_map[measure_field]['display_name']} Progression\n({group_time} days intervals)",
+        title=title,
         xAxisTitle="Date",
         yAxisTitle=f"{display_units_map[measure_field]['display_name']} ({display_units_map[measure_field]['units']})",
         dataPoints=results
