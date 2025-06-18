@@ -1,7 +1,21 @@
-const form = document.getElementById('controls');
+// DOM Elements
+const dateFilterForm = document.getElementById('dateFilterForm');
+const axisControlsForm = document.getElementById('axisControls');
 const loading = document.getElementById('loading');
 const errorDiv = document.getElementById('error');
-const chartDiv = document.getElementById('chart');
+const chartDiv = document.getElementById('scatter-chart');
+
+// Time-Series Chart DOM Elements
+const timeSeriesControlsForm = document.getElementById('timeSeriesControls');
+const loadingTimeSeries = document.getElementById('loading-time-series');
+const errorTimeSeriesDiv = document.getElementById('error-time-series');
+const timeSeriesChartDiv = document.getElementById('time-progression-chart');
+
+// Global date filter state (shared across all charts)
+const globalDateFilter = {
+    startDate: '2025-01-01',
+    endDate: '2025-06-30'
+};
 
 // Chart theme colors
 const chartTheme = {
@@ -18,19 +32,52 @@ const chartTheme = {
     }
 };
 
-form.addEventListener('submit', async (e) => {
+// Global date filter event handler
+dateFilterForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // Update global date filter state
+    globalDateFilter.startDate = document.getElementById('startDate').value;
+    globalDateFilter.endDate = document.getElementById('endDate').value;
+
+    // Trigger refresh of all charts that depend on date filter
+    refreshMeasurementsChart();
+    refreshTimeSeriesChart();
+    // TODO: Add other chart refresh calls here as they are implemented
+    // e.g., refreshTrendChart(), refreshComparisonChart(), etc.
+});
+
+// Measurements chart axis controls event handler
+axisControlsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    refreshMeasurementsChart();
+});
+
+// Time-Series chart controls event handler
+if (timeSeriesControlsForm) {
+    timeSeriesControlsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        refreshTimeSeriesChart();
+    });
+}
+
+// Function to refresh the measurements chart
+async function refreshMeasurementsChart() {
     loading.style.display = 'block';
     errorDiv.style.display = 'none';
     chartDiv.innerHTML = '';
+
     try {
-        const startDate = document.getElementById('startDate').value;
-        const endDate = document.getElementById('endDate').value;
         const xField = document.getElementById('xField').value;
         const yField = document.getElementById('yField').value;
-        const url = `http://localhost:8080/api/measurements/scatter?start_date=${startDate}&end_date=${endDate}&x_field=${xField}&y_field=${yField}`;
+
+        // Use global date filter state
+        const url = `http://localhost:8080/api/v1/measurements?start_date=${globalDateFilter.startDate}&end_date=${globalDateFilter.endDate}&x_field=${xField}&y_field=${yField}`;
         const response = await fetch(url);
-        if (!response.ok) throw new Error(await response.text());
+
+        if (!response.ok) {
+            throw new Error(await response.text());
+        }
+
         const data = await response.json();
         renderChart(data, xField, yField);
     } catch (err) {
@@ -39,9 +86,42 @@ form.addEventListener('submit', async (e) => {
     } finally {
         loading.style.display = 'none';
     }
+}
+
+// Function to refresh the time-series chart
+async function refreshTimeSeriesChart() {
+    loadingTimeSeries.style.display = 'block';
+    errorTimeSeriesDiv.style.display = 'none';
+    timeSeriesChartDiv.innerHTML = '';
+    try {
+        const measureField = document.getElementById('measureField').value;
+        const groupTime = document.getElementById('groupTime').value;
+        // Use global date filter state
+        const url = `http://localhost:8080/api/v1/time-progression?start_date=${globalDateFilter.startDate}&end_date=${globalDateFilter.endDate}&measure_field=${measureField}&group_time=${groupTime}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        renderTimeSeriesChart(data);
+    } catch (err) {
+        errorTimeSeriesDiv.textContent = err.message || 'Failed to load time-series data';
+        errorTimeSeriesDiv.style.display = 'block';
+    } finally {
+        loadingTimeSeries.style.display = 'none';
+    }
+}
+
+// Initialize the page by loading the chart with default settings
+document.addEventListener('DOMContentLoaded', () => {
+    // Set initial date values from global state
+    document.getElementById('startDate').value = globalDateFilter.startDate;
+    document.getElementById('endDate').value = globalDateFilter.endDate;
+
+    // Load initial chart
+    refreshMeasurementsChart();
+    refreshTimeSeriesChart();
 });
 
-function renderChart(data) {
+function renderChart(data, xField, yField) {
     console.log(data);
     if (!data.dataPoints.length) {
         chartDiv.innerHTML = 'No data for selected range/fields.';
@@ -153,10 +233,123 @@ function renderChart(data) {
         modeBarButtonsToRemove: ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toImage', 'sendDataToCloud']
     };
 
-    Plotly.newPlot('chart', [trace], layout, config).then(() => {
+    Plotly.newPlot('scatter-chart', [trace], layout, config).then(() => {
         // Ensure the chart resizes properly with the window
         window.addEventListener('resize', () => {
-            Plotly.Plots.resize('chart');
+            Plotly.Plots.resize('scatter-chart');
+        });
+    });
+}
+
+// Function to render the time-series chart using Plotly
+function renderTimeSeriesChart(data) {
+    if (!data.dataPoints.length) {
+        timeSeriesChartDiv.innerHTML = 'No data for selected range/field.';
+        return;
+    }
+    const trace = {
+        x: data.dataPoints.map(d => new Date(d.date)),
+        y: data.dataPoints.map(d => d.value),
+        mode: 'lines+markers',
+        type: 'scatter',
+        marker: {
+            size: 10,
+            color: '#11A8A8', //chartTheme.accent,
+            line: {
+                color: chartTheme.background,
+                width: 1
+            }
+        },
+        line: {
+            color: '#11A8A8', //chartTheme.accent,
+            width: 3
+        },
+        error_y: {
+            type: 'data',
+            array: data.dataPoints.map(d => d.std),
+            visible: true,
+            color: '#11A8A8',
+            thickness: 2,
+            width: 0,
+            opacity: 0.8
+        },
+        hovertemplate: '%{x|%Y-%m-%d}: %{y}<extra></extra>',
+        customdata: data.dataPoints.map(d => d.std),
+        hoverlabel: {
+            bgcolor: chartTheme.background,
+            font: {
+                color: chartTheme.text,
+                size: 12
+            }
+        }
+    };
+    const layout = {
+        autosize: true,
+        width: null,
+        height: null,
+        paper_bgcolor: chartTheme.background,
+        plot_bgcolor: chartTheme.background,
+        font: {
+            color: chartTheme.text,
+            family: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
+        },
+        title: {
+            text: data.title,
+            font: {
+                size: 24,
+                color: chartTheme.text
+            },
+            x: 0.5,
+            xanchor: 'center'
+        },
+        xaxis: {
+            title: {
+                text: data.xAxisTitle,
+                font: {
+                    size: 16,
+                    color: chartTheme.text
+                }
+            },
+            gridcolor: chartTheme.grid,
+            zerolinecolor: chartTheme.grid,
+            tickfont: {
+                color: chartTheme.text
+            },
+            type: 'date'
+        },
+        yaxis: {
+            title: {
+                text: data.yAxisTitle,
+                font: {
+                    size: 16,
+                    color: chartTheme.text
+                }
+            },
+            gridcolor: chartTheme.grid,
+            zerolinecolor: chartTheme.grid,
+            tickfont: {
+                color: chartTheme.text
+            }
+        },
+        margin: {
+            l: 60,
+            r: 60,
+            b: 80,
+            t: 100,
+            pad: 4
+        },
+        showlegend: false,
+        hovermode: 'closest'
+    };
+    const config = {
+        responsive: true,
+        displayModeBar: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ['lasso2d', 'select2d', 'zoomIn2d', 'zoomOut2d', 'autoScale2d', 'toImage', 'sendDataToCloud']
+    };
+    Plotly.newPlot('time-progression-chart', [trace], layout, config).then(() => {
+        window.addEventListener('resize', () => {
+            Plotly.Plots.resize('time-progression-chart');
         });
     });
 }

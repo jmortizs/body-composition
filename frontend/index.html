@@ -8,41 +8,90 @@
 </head>
 
 <body>
-    <h1>Scatter Plot: Compare Measurements</h1>
-    <form id="controls">
-        <label>
-            Start Date:
-            <input type="date" id="startDate" value="2025-01-01" required>
-        </label>
-        <label>
-            End Date:
-            <input type="date" id="endDate" value="2025-06-30" required>
-        </label>
-        <label>
-            X Axis:
-            <select id="xField">
-                <option value="muscleMass">Muscle Mass</option>
-                <option value="weight" selected>Weight</option>
-                <option value="bodyFatMass">Body Fat Mass</option>
-                <option value="totalBodyWater">Total Body Water</option>
-                <option value="basalMetabolicRate">Basal Metabolic Rate</option>
-            </select>
-        </label>
-        <label>
-            Y Axis:
-            <select id="yField">
-                <option value="muscleMass" selected>Muscle Mass</option>
-                <option value="weight">Weight</option>
-                <option value="bodyFatMass">Body Fat Mass</option>
-                <option value="totalBodyWater">Total Body Water</option>
-                <option value="basalMetabolicRate">Basal Metabolic Rate</option>
-            </select>
-        </label>
-        <button type="submit">Update Chart</button>
-    </form>
-    <div id="loading" style="display:none;">Loading...</div>
-    <div id="error" style="display:none;color:red;"></div>
-    <div id="chart"></div>
+    <h1>Body Composition Data Visualization</h1>
+
+    <!-- Global Date Filter Section -->
+    <section id="global-date-filter">
+        <h2>Date Range Filter</h2>
+        <form id="dateFilterForm">
+            <label>
+                Start Date:
+                <input type="date" id="startDate" value="2025-01-01" required>
+            </label>
+            <label>
+                End Date:
+                <input type="date" id="endDate" value="2025-06-30" required>
+            </label>
+            <button type="submit" title="Refresh">
+                &#x21bb;
+            </button>
+        </form>
+    </section>
+
+    <!-- Measurements Chart Section -->
+    <section id="measurements-chart-section">
+        <h2>Scatter Plot: Compare Measurements</h2>
+        <form id="axisControls">
+            <label>
+                X Axis:
+                <select id="xField">
+                    <option value="muscleMass">Muscle Mass</option>
+                    <option value="weight" selected>Weight</option>
+                    <option value="bodyFatMass">Body Fat Mass</option>
+                    <option value="totalBodyWater">Total Body Water</option>
+                    <option value="basalMetabolicRate">Basal Metabolic Rate</option>
+                </select>
+            </label>
+            <label>
+                Y Axis:
+                <select id="yField">
+                    <option value="muscleMass" selected>Muscle Mass</option>
+                    <option value="weight">Weight</option>
+                    <option value="bodyFatMass">Body Fat Mass</option>
+                    <option value="totalBodyWater">Total Body Water</option>
+                    <option value="basalMetabolicRate">Basal Metabolic Rate</option>
+                </select>
+            </label>
+            <button type="submit" title="Refresh">
+                &#x21bb;
+            </button>
+        </form>
+        <div id="loading" style="display:none;">Loading...</div>
+        <div id="error" style="display:none;color:red;"></div>
+        <div id="scatter-chart"></div>
+    </section>
+
+    <!-- Time-Series Chart Section -->
+    <section id="time-series-chart-section">
+        <h2>Time-Series: Progression Over Time</h2>
+        <form id="timeSeriesControls">
+            <label>
+                Measurement Field:
+                <select id="measureField">
+                    <option value="muscleMass">Muscle Mass</option>
+                    <option value="weight" selected>Weight</option>
+                    <option value="bodyFatMass">Body Fat Mass</option>
+                    <option value="totalBodyWater">Total Body Water</option>
+                    <option value="basalMetabolicRate">Basal Metabolic Rate</option>
+                </select>
+            </label>
+            <label>
+                Group Time (days):
+                <select id="groupTime" required>
+                    <option value="7">7</option>
+                    <option value="14">14</option>
+                    <option value="28" selected>28</option>
+                </select>
+            </label>
+            <button type="submit" title="Refresh">
+                &#x21bb;
+            </button>
+        </form>
+        <div id="loading-time-series" style="display:none;">Loading...</div>
+        <div id="error-time-series" style="display:none;color:red;"></div>
+        <div id="time-progression-chart"></div>
+    </section>
+
     <script src="https://cdn.plot.ly/plotly-3.0.1.min.js"></script>
     <script src="app.js"></script>
 </body>

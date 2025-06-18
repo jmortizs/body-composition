@@ -41,6 +41,62 @@ h1 {
     font-weight: 600;
 }
 
+h2 {
+    font-size: 1.5rem;
+    margin-bottom: var(--spacing-md);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Global Date Filter Section */
+#global-date-filter {
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    border-left: 4px solid var(--accent);
+}
+
+#dateFilterForm {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) auto;
+    gap: var(--spacing-md);
+    align-items: end;
+}
+
+/* Measurements Chart Section */
+#measurements-chart-section {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#axisControls {
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) auto;
+    gap: var(--spacing-md);
+    align-items: end;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+#timeSeriesControls {
+    background-color: var(--bg-secondary);
+    padding: var(--spacing-md);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-md);
+    display: grid;
+    grid-template-columns: repeat(2, 1fr) auto;
+    gap: var(--spacing-md);
+    align-items: end;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+/* Legacy selector for backward compatibility - can be removed later */
 #controls {
     background-color: var(--bg-secondary);
     padding: var(--spacing-md);
@@ -95,9 +151,7 @@ button {
     font-size: 1rem;
     font-weight: 500;
     transition: all 0.2s ease;
-    grid-column: 1 / -1;
-    max-width: 200px;
-    margin: var(--spacing-xs) auto 0;
+    white-space: nowrap;
 }
 
 button:hover {
@@ -107,6 +161,34 @@ button:hover {
 
 button:active {
     transform: translateY(0);
+}
+
+button[type="submit"] {
+    background-color: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 700;
+    transition: background 0.2s, transform 0.1s;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+    margin: 0 auto;
+    padding: 0;
+}
+
+button[type="submit"]:hover {
+    background-color: var(--accent-hover);
+    transform: rotate(20deg) scale(1.08);
+}
+
+button[type="submit"]:active {
+    background-color: var(--accent);
+    transform: rotate(-20deg) scale(0.98);
 }
 
 #loading {
@@ -129,9 +211,8 @@ button:active {
     border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-#chart {
+#scatter-chart, #time-progression-chart {
     background-color: var(--bg-secondary);
-    /* padding: var(--spacing-md); */
     border-radius: var(--border-radius);
     margin-top: var(--spacing-md);
     flex: 1;
@@ -146,6 +227,8 @@ button:active {
         padding: var(--spacing-sm);
     }
 
+    #dateFilterForm,
+    #axisControls,
     #controls {
         grid-template-columns: 1fr;
         gap: var(--spacing-sm);
@@ -155,7 +238,15 @@ button:active {
         font-size: 2rem;
     }
 
-    #chart {
+    h2 {
+        font-size: 1.25rem;
+    }
+
+    #scatter-chart, #time-progression-chart {
         min-height: 400px;
+    }
+
+    button {
+        justify-self: stretch;
     }
 }
